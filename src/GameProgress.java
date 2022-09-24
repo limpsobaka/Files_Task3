@@ -1,6 +1,6 @@
 import java.io.*;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import java.util.zip.ZipInputStream;
 
 public class GameProgress implements Serializable {
   private static final long serialVersionUID = 1L;
@@ -17,40 +17,32 @@ public class GameProgress implements Serializable {
     this.distance = distance;
   }
 
-  public static void saveGame(String path, GameProgress gp) {
-    try (FileOutputStream fos = new FileOutputStream(path);
-         ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-      oos.writeObject(gp);
+  public static void openZip(String path, String zip) {
+    try (ZipInputStream zin = new ZipInputStream(new FileInputStream(zip))) {
+      ZipEntry entry;
+      String name;
+      while ((entry = zin.getNextEntry()) != null) {
+        name = entry.getName();
+        FileOutputStream fout = new FileOutputStream(path + name);
+        for (int c = zin.read(); c != -1; c = zin.read()) {
+          fout.write(c);
+        }
+        fout.flush();
+        zin.closeEntry();
+        fout.close();
+      }
     } catch (Exception ex) {
       System.out.println(ex.getMessage());
     }
   }
 
-  public static void zipFiles(String path, String[] saves) throws IOException {
-    ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(path));
-    File save;
-    for (String s : saves) {
-      save = new File(s);
-      try (FileInputStream fis = new FileInputStream(save)) {
-        ZipEntry entry = new ZipEntry(save.getName());
-        zout.putNextEntry(entry);
-        byte[] buffer = new byte[fis.available()];
-        fis.read(buffer);
-        zout.write(buffer);
-        zout.closeEntry();
-      } catch (Exception ex) {
-        System.out.println(ex.getMessage());
-      }
-    }
-    zout.close();
-
-    for (String s : saves) {
-      save = new File(s);
-      try {
-        save.delete();
-      } catch (Exception ex) {
-        System.out.println(ex.getMessage());
-      }
+  public static GameProgress openProgress(String path) {
+    try (FileInputStream fis = new FileInputStream(path);
+         ObjectInputStream ois = new ObjectInputStream(fis)) {
+      return (GameProgress) ois.readObject();
+    } catch (Exception ex) {
+      System.out.println(ex.getMessage());
+      return null;
     }
   }
 
